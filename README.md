@@ -1,29 +1,41 @@
-# Wikipedia Search Engine
+# Wikipedia Search Engine 🔎
+### Information Retrieval Final Project (2025-2026)
 
-A large-scale search engine for the entire English Wikipedia dump, built with PySpark for distributed indexing and Flask for serving search queries. The system is deployed on Google Cloud Platform (GCP) and supports multiple search strategies with advanced ranking algorithms.
+**Authors:**
+* **Hadar Knafo** (ID: 206747792)
+* **Lital Kupchick** (ID: 318567914)
+
+---
 
 ## Overview
+A large-scale search engine for the entire English Wikipedia dump (>6 million articles), built with **PySpark** for distributed indexing and **Flask** for serving search queries. The system is deployed on **Google Cloud Platform (GCP)** and utilizes a hybrid ranking strategy combining TF-IDF, Title matching, and Anchor text signals.
 
-This project implements a complete information retrieval system that indexes and searches over 6 million Wikipedia articles. The system uses distributed computing (PySpark) to build inverted indices and provides a RESTful API for executing various types of search queries.
+**Live Deployment IP:** `http://35.193.251.255:8080`
 
 ## Architecture
 
 The search engine is built on several key components:
 
-### Inverted Indices
-- **Body Index**: Full-text index of article content with TF-IDF scoring
-- **Title Index**: Specialized index for article titles (high precision)
-- **Anchor Index**: Index of anchor text from hyperlinks (collaborative filtering signal)
+### 1. Inverted Indices (Distributed Storage)
+* **Body Index:** Full-text index using TF-IDF scoring.
+* **Title Index:** Optimized index for article titles (high precision).
+* **Anchor Index:** Index based on anchor text from incoming hyperlinks.
+* *Storage:* All indices are stored in a **Google Cloud Storage (GCS)** bucket (`gs://ir-wiki-hadar`) as split binary files to allow efficient random access and low-latency retrieval.
 
-### Ranking Signals
-- **TF-IDF Scoring**: Term frequency-inverse document frequency for body text relevance
-- **PageRank**: Graph-based importance scores computed from Wikipedia's link structure
-- **PageViews**: Popularity metrics based on article view counts
+### 2. Ranking Strategy
+The search engine uses a **weighted hybrid approach**. Through experimentation, we found that article titles are the strongest signal for relevance in Wikipedia.
 
-### Storage & Deployment
-- **Google Cloud Storage (GCS)**: Stores inverted indices and metadata in binary format
-- **Split File Architecture**: Large indices split across multiple files (~2MB each) for efficient streaming
-- **Flask API**: RESTful endpoints for different search strategies
+**Final Weights Configuration:**
+* **Title Weight:** 0.85 (Focus on high-precision matches)
+* **Body Weight:** 0.10 (Support for content-based recall)
+* **Anchor Weight:** 0.05 (Additional collaborative signal)
+
+### 3. Performance & Results
+* **Lazy Loading:** The system loads only lightweight term dictionaries into RAM at startup. Heavy posting lists are read from GCS only upon request to optimize memory usage.
+* **Binary Packing:** Posting lists are compressed into 6-byte blocks (4 bytes DocID + 2 bytes TF).
+* **Evaluation Results:**
+    * **MAP@40:** 0.0923 (Hybrid model)
+    * **Avg Latency:** ~3.2 seconds per query
 
 ## Project Structure
 

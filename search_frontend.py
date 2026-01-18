@@ -240,41 +240,52 @@ class SearchFrontend:
         res = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return [(str(d), self.id_to_title.get(int(d), "Unknown")) for d, _ in res]
 
+
     def search(self, query):
         """
-        Hybrid search combining title and body text matching.
-        
-        Ranking formula:
-        - Title match: +0.7 per query term (higher weight because titles are more indicative)
-        - Body match: +0.3 * (TF-IDF cosine similarity)
-          - TF-IDF = (term frequency * inverse document frequency) / document norm
-          - IDF = log10(N / document_frequency)
-        
-        Args:
-            query: Search query string
-        
-        Returns:
-            List of top 100 tuples (doc_id, title) sorted by relevance score (descending)
+        Hybrid search combining title, body, and anchor text matching.
         """
-        self.load_metadata(); self.load_title_index(); self.load_body_index()
-        tokens = self.tokenize(query); scores = Counter()
-        N = len(self.doc_norms) if self.doc_norms else 6000000  # Total number of documents
+        # 1. טעינת כל האינדקסים הנדרשים
+        self.load_metadata()
+        self.load_title_index()
+        self.load_body_index()
+        self.load_anchor_index()  # הוספנו טעינה של העוגנים
+        
+        tokens = self.tokenize(query)
+        scores = Counter()
+        N = len(self.doc_norms) if self.doc_norms else 6000000 
+        
+        # --- הגדרת משקולות חדשות ואגרסיביות ---
+        w_title = 0.85   # כוח עצום לכותרת
+        w_body = 0.10    # משקל נמוך לגוף
+        w_anchor = 0.05  # תוספת קטנה מהעוגנים
         
         for t in tokens:
-            # Title signal: 0.7 weight for each title match
+            # 1. Title Signal (הכי חזק)
             if self.title_index:
                 for d, _ in self._get_posting(self.title_index, t):
-                    scores[int(d)] += 0.7
+                    scores[int(d)] += w_title * 1  # כל מילה בכותרת שווה המון
             
-            # Body signal: 0.3 * TF-IDF cosine similarity
-            if self.body_index:
-                idf = math.log(N / self.body_index.df[t], 10) if t in self.body_index.df else 0
+            # 2. Body Signal (TF-IDF)
+            if self.body_index and t in self.body_index.df:
+                idf = math.log(N / self.body_index.df[t], 10)
                 for d, tf in self._get_posting(self.body_index, t):
-                    scores[int(d)] += 0.3 * (tf * idf) / self.doc_norms.get(int(d), 1)
-        
+                    di = int(d)
+                    # נירמול הציון כדי שלא ישתלט על הכותרת
+                    tfidf = (tf * idf) / self.doc_norms.get(di, 1)
+                    scores[di] += w_body * tfidf
+
+            # 3. Anchor Signal (תוספת בונוס)
+            if self.anchor_index:
+                for d, _ in self._get_posting(self.anchor_index, t):
+                    scores[int(d)] += w_anchor * 1
+
+        # מיון והחזרת 100 התוצאות הראשונות
         res = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return [(str(d), self.id_to_title.get(d, "Unknown")) for d, _ in res[:100]]
-
+    
+    
+    
     def search_body(self, query):
         """
         Search for documents by matching query terms in article body text.
@@ -369,3 +380,6 @@ def get_pagerank():
 def get_pageview():
     """Get page view counts. POST body: JSON list of doc IDs"""
     return jsonify(frontend.get_pageview(request.get_json() or []))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080, debug=False)
