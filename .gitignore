@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local index files (too large for Git)
+*.pkl
+*.bin
+*.pickle
+index_body.pkl
+index_title.pkl
+index_anchor.pkl
+
+# GCP credentials
+*.json
+!queries_train.json
+credentials.json
+service-account.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
